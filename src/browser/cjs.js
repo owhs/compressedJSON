@@ -15,26 +15,26 @@ const _CJS = (config={})=>{
     }
     
     const Export = {
-        parseSaveString: str=>{
+        parseSaveString: (str,split="\n")=>{
             if (!cache.lookup) throw Error("No hash lookup cached!\n\tUse 'hashLookupObj' in order to use lookup tools");
-            var spl = str.split("\n"),
+            var spl = str.split(split),
                 keys = (cache.lookup[cache.qk[spl[0]]]||cache.lookup[spl[0]]).split(",");
             return Object.assign.apply({},spl.slice(1).map((v,i)=>({[keys[i]]:JSON.parse(v[0]==='"' ? v+'"' : v)})));
         },
         parseCompressed: async (str)=>{
             return Export.parseSaveString(await new Response((new Response(str)).body.pipeThrough(new DecompressionStream("gzip"))).text())
         },
-        getCompressed: async (obj,validate=false)=>{
-            return await new Response((new Response(Export.getSaveString(obj,validate))).body.pipeThrough(new CompressionStream("gzip"))).blob()
+        getCompressed: async (obj,validate=false,split="\n")=>{
+            return await new Response((new Response(Export.getSaveString(obj,validate,split))).body.pipeThrough(new CompressionStream("gzip"))).blob()
         },
-        getSaveString: (obj,validate=false)=>{
+        getSaveString: (obj,validate=false,split="\n")=>{
             var saveHash = Export.getSaveHash(obj);
             if (validate && !Export.isSaveHashValid(saveHash)) throw Error("Invalid save obj");
             saveHash = cache.qk[saveHash] || saveHash;
-            return saveHash+"\n"+KEYS(obj).sort().map(k=>{
+            return saveHash+split+KEYS(obj).sort().map(k=>{
                 var t = JSON.stringify(obj[k]);
                 return t[0]==='"' ? t.slice(0,-1) : t
-            }).join("\n")
+            }).join(split)
         },
         getSaveHash: obj=>hasher((obj.forEach ? obj : obj.split ? obj.split(",") : KEYS(obj)).sort().join(",")),
         isSaveHashValid: saveHash => {
